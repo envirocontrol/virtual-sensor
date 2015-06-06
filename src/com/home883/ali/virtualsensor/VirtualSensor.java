@@ -2,13 +2,10 @@ package com.home883.ali.virtualsensor;
 
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
-import java.net.ProtocolException;
-import java.time.Clock;
-import java.time.ZoneId;
 import java.util.Calendar;
 import java.util.GregorianCalendar;
 import java.net.*;
@@ -40,7 +37,6 @@ public class VirtualSensor {
 				if ( 0.5 + 1> Math.random() )
 				{
 					GregorianCalendar gc = new GregorianCalendar() ;
-					System.out.println( gc.get(Calendar.AM_PM));
 					
 					if ( gc.get(Calendar.AM_PM) == 0 )
 					{
@@ -56,10 +52,11 @@ public class VirtualSensor {
 				}
 				
 				json.put("id", "virtual-sensor");
-				json.put("temp", temp) ;
+				json.put("temperature", temp) ;
 				json.put("humidity", humidity) ;
 				
-				System.out.println(currentTime);
+				sendJson( json );
+				
 				System.out.println(json.toString());
 				
 				previousTime = currentTime ;
@@ -72,9 +69,10 @@ public class VirtualSensor {
 	{
 		URL url ;
 		HttpURLConnection conn = null ;
+		BufferedReader br = null ;
 		
 		try {
-			url = new URL ("http://localhost/post.php") ;
+			url = new URL ("http://envirocontrol/logger/post.php") ;
 			conn = (HttpURLConnection)url.openConnection() ;
 			conn.setDoInput(true);
 			conn.setDoOutput(true);
@@ -83,17 +81,18 @@ public class VirtualSensor {
 			conn.setRequestProperty("Accept", "application/json");
 			conn.connect();
 			
-			OutputStreamWriter wr;
-			wr = new OutputStreamWriter(conn.getOutputStream());
-			wr.write(json.toString());
-			wr.flush();
+			OutputStreamWriter output;
+			output = new OutputStreamWriter(conn.getOutputStream());
+			output.write(json.toString());
+			output.flush();
 			
+			System.out.println(Integer.toString(HttpURLConnection.HTTP_OK) + " : " + Integer.toString(conn.getResponseCode()));
 			StringBuilder sb = new StringBuilder() ;
-			int httpResult = conn.getResponseCode() ;
+			InputStream inputStream = conn.getInputStream() ;
 			
-			if ( httpResult == HttpURLConnection.HTTP_OK )
+			if ( inputStream != null )
 			{
-				BufferedReader br = new BufferedReader( new InputStreamReader( conn.getInputStream(), "utf-8"));
+				br = new BufferedReader( new InputStreamReader( inputStream ));
 				String line = null ;
 				while ((line = br.readLine()) != null)
 				{
@@ -105,13 +104,25 @@ public class VirtualSensor {
 				System.out.println("Response: " + sb.toString());
 			}
 			else
-				System.out.println(conn.getResponseMessage());
+				System.out.println("No Response: " + conn.getResponseMessage());
 		} catch (Exception e)
 		{
 			e.getStackTrace();
-		}
+			System.out.println(e.toString());
+		} finally{
+            if (conn != null) {
+                conn.disconnect();
+            }
+            if (br != null) {
+                try {
+                    br.close();
+                } catch (final IOException e) {
+                    e.getStackTrace() ;
+                    System.out.println(e.toString());
+                }
+            }
 				
-		
+		}  
 	}
 
 }
